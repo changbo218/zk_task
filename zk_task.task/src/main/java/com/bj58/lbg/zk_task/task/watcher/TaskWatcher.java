@@ -21,8 +21,9 @@ public class TaskWatcher implements Watcher {
 	private ExecutorService pool = Executors.newCachedThreadPool();
 	private String nodeName;
 	private CountDownLatch countDownLatch;
+	private TaskService taskService;
 	
-	public TaskWatcher(CountDownLatch countDownLatch) {
+	public TaskWatcher(CountDownLatch countDownLatch, TaskService taskService) {
 		this.countDownLatch = countDownLatch;
 	}
 	
@@ -39,7 +40,10 @@ public class TaskWatcher implements Watcher {
 			e.printStackTrace();
 		}
 		if (event.getPath().equals("/root/task")) {
-			pool.execute(new TaskService(ZookeeperTaskUtil.getZookeeper(), this, nodeName));
+			if(taskService != null) {
+				taskService.initProperties(ZookeeperTaskUtil.getZookeeper(), this, nodeName);
+			}
+			pool.execute(taskService);
 		}
 	}
 

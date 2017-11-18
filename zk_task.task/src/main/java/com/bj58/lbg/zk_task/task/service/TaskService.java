@@ -10,6 +10,7 @@ import org.apache.zookeeper.data.Stat;
 
 import com.bj58.lbg.zk_task.core.entity.NewData;
 import com.bj58.lbg.zk_task.core.entity.TaskData;
+import com.bj58.lbg.zk_task.core.exception.TaskHandleException;
 import com.bj58.lbg.zk_task.core.util.ByteUtil;
 import com.bj58.lbg.zk_task.core.util.Constant;
 import com.bj58.lbg.zk_task.core.util.MemcacheComp;
@@ -17,7 +18,7 @@ import com.bj58.lbg.zk_task.core.util.NumberConcatUtil;
 import com.bj58.lbg.zk_task.core.util.NumberSubstringUtil;
 import com.bj58.lbg.zk_task.task.dto.TaskProgress;
 
-public class TaskService implements Runnable {
+public abstract class TaskService implements Runnable {
 	boolean flag = false;
 	private ZooKeeper zk;
 	private Watcher watcher;
@@ -29,6 +30,23 @@ public class TaskService implements Runnable {
 		this.watcher = watcher;
 		this.nodeName = nodeName;
 	}
+	
+	public TaskService() {
+	
+	}
+	
+	/**
+	 * 因为zk等属性要在service创建之后才能被创建，所以该方法需要在zk创建好之后调用，不能写到构造方法里
+	 * @param zk
+	 * @param watcher
+	 * @param nodeName
+	 */
+	public void initProperties(ZooKeeper zk, Watcher watcher, String nodeName) {
+		this.zk = zk;
+		this.watcher = watcher;
+		this.nodeName = nodeName;
+	}
+
 
 	public void run() {
 		findTaskDataToProcess();
@@ -129,7 +147,10 @@ public class TaskService implements Runnable {
 	 */
 	private void doAction(TaskData taskData, TaskProgress progress, int id) throws Exception {
 		try {
-			// doSomething
+			//如果错误id的执行次数超过了100次，就默认为执行成功，是为了防止无限次错误调用
+			if(taskData.getVersion() <= 100) {
+				doAction(id, taskData.getVersion());
+			}
 			// 线程处理时，每处理完一个数据，就要把id加到完成队列(字符串)里--memcache
 			// put 到memcache里
 			progress.setSuccessIds(NumberConcatUtil.concatNumber(progress.getSuccessIds(), id));
@@ -290,4 +311,13 @@ public class TaskService implements Runnable {
 			}
 		}
 	}
+
+	/**
+	 * 业务处理方法
+	 * @param id 任务数据id
+	 * @param version 该任务id被执行的次数，当id执行错误重新执行一次，这个version就会加1
+	 * 这里要注意，为了防止大量的重复错误调用，业务方需要根据version的值做特殊处理，默认执行100次之后就会认为成功
+	 * @throws TaskHandleException 如果执行时抛出此异常，就任务该id执行失败，需重新执行
+	 */
+	public abstract void doAction(int id, int version) throws TaskHandleException;
 }

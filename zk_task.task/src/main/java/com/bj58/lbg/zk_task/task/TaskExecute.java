@@ -15,24 +15,6 @@ import com.bj58.lbg.zk_task.task.watcher.TaskWatcher;
 
 public class TaskExecute {
 
-//	public static void main(String[] args) throws KeeperException, InterruptedException {
-//		CountDownLatch countDownLatch = new CountDownLatch(1);
-//		TaskWatcher watcher = new TaskWatcher(countDownLatch);
-//		ZookeeperTaskUtil.init(watcher);
-//		ZooKeeper zk = ZookeeperTaskUtil.getZookeeper();
-//		if(zk.exists("/root", watcher) == null) {
-//			zk.create("/root", null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-//		}
-//		if(zk.exists("/root/task", watcher) == null) {
-//			zk.create("/root/task", ByteUtil.objectToByte(new ArrayList<TaskData>()), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-//		}
-//		String nodeName = zk.create("/root/task/task_node", null, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
-//		System.out.println(nodeName);
-//		watcher.setNodeName(nodeName.substring(nodeName.lastIndexOf("/")+1, nodeName.length()));
-//		countDownLatch.countDown();
-//		Thread.sleep(Integer.MAX_VALUE);
-//	}
-	
 	public static void startup(TaskService taskService) {
 		try {
 			CountDownLatch countDownLatch = new CountDownLatch(1);

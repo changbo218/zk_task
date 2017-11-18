@@ -7,7 +7,6 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
-import org.junit.Test;
 
 import com.bj58.lbg.zk_task.core.entity.TaskData;
 import com.bj58.lbg.zk_task.core.util.ByteUtil;
@@ -16,7 +15,7 @@ import com.bj58.lbg.zk_task.task.watcher.TaskWatcher;
 
 public class TaskExecuteTest {
 
-	@Test
+	//@Test
 	public void startup() throws KeeperException, InterruptedException {
 		TestTaskService taskService = new TestTaskService();
 		CountDownLatch countDownLatch = new CountDownLatch(1);
