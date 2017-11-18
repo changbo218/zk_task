@@ -25,6 +25,7 @@ public class TaskWatcher implements Watcher {
 	
 	public TaskWatcher(CountDownLatch countDownLatch, TaskService taskService) {
 		this.countDownLatch = countDownLatch;
+		this.taskService = taskService;
 	}
 	
 	/**
