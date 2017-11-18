@@ -7,17 +7,20 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
+import org.junit.Test;
 
 import com.bj58.lbg.zk_task.core.entity.TaskData;
 import com.bj58.lbg.zk_task.core.util.ByteUtil;
 import com.bj58.lbg.zk_task.task.util.ZookeeperTaskUtil;
 import com.bj58.lbg.zk_task.task.watcher.TaskWatcher;
 
-public class TaskStartup {
+public class TaskExecuteTest {
 
-	public static void main(String[] args) throws KeeperException, InterruptedException {
+	@Test
+	public void startup() throws KeeperException, InterruptedException {
+		TestTaskService taskService = new TestTaskService();
 		CountDownLatch countDownLatch = new CountDownLatch(1);
-		TaskWatcher watcher = new TaskWatcher(countDownLatch);
+		TaskWatcher watcher = new TaskWatcher(countDownLatch, taskService);
 		ZookeeperTaskUtil.init(watcher);
 		ZooKeeper zk = ZookeeperTaskUtil.getZookeeper();
 		if(zk.exists("/root", watcher) == null) {
