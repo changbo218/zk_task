@@ -6,7 +6,7 @@ package com.bj58.lbg.zk_task.core.util;
  * @author 常博
  *
  */
-public class NumberSubstringUtil {
+public class NumberSubstringUtil extends NumberUtil{
 
 	public static String substringNumber(String original, String current) {
 		if(current != null && current.length() > 0) {
@@ -14,38 +14,38 @@ public class NumberSubstringUtil {
 				String[] strArr = current.split(",");
 				for (String data : strArr) {
 					if(data.contains("-")) {
-						int left = Integer.valueOf(data.split("-")[0]);
-						int right = Integer.valueOf(data.split("-")[1]);
-						for (int i = left; i <= right; i++) {
+						long left = Long.valueOf(data.split("-")[0]);
+						long right = Long.valueOf(data.split("-")[1]);
+						for (Long i = left; i <= right; i++) {
 							original = substringNumber(original, i);
 						}
 					} else {
-						original = substringNumber(original, Integer.valueOf(data));
+						original = substringNumber(original, Long.valueOf(data));
 					}
 				}
 			} else {
 				if(current.contains("-")) {
-					int left = Integer.valueOf(current.split("-")[0]);
-					int right = Integer.valueOf(current.split("-")[1]);
-					for (int i = left; i <= right; i++) {
+					long left = Long.valueOf(current.split("-")[0]);
+					long right = Long.valueOf(current.split("-")[1]);
+					for (long i = left; i <= right; i++) {
 						original = substringNumber(original, i);
 					}
 				} else {
-					original = substringNumber(original, Integer.valueOf(current));
+					original = substringNumber(original, Long.valueOf(current));
 				}
 			}
 		}
 		return original;
 	}
 	
-	public static String substringNumber(String original, Integer current) {
+	public static String substringNumber(String original, long current) {
 		if(original !=null && original.length() > 0) {
 			if(!original.contains(",")) {
 				//如  3-7 或  4
 				if(original.contains("-")) {
 					// 3-7
-					Integer low = Integer.valueOf(original.split("-")[0]);
-					Integer high = Integer.valueOf(original.split("-")[1]);
+					long low = Long.valueOf(original.split("-")[0]);
+					long high = Long.valueOf(original.split("-")[1]);
 					if(low == current) {  //current = 3
 						if(current + 1 == high) {   //3-4
 							return high+"";
@@ -72,7 +72,7 @@ public class NumberSubstringUtil {
 					}
 				} else {
 					// 4
-					Integer ori = Integer.valueOf(original);
+					long ori = Long.valueOf(original);
 					if(current == ori) {
 						return "";
 					} else {
@@ -87,7 +87,8 @@ public class NumberSubstringUtil {
 				for (int i=0;i<strArr.length;i++) {
 					if(!strArr[i].contains("-")) {
 						//不包含-，则是数字
-						if(Integer.valueOf(strArr[i]) == current) {
+						long num = Long.valueOf(strArr[i]);
+						if(num == current) {
 							if(i == 0) {
 								return original.substring(original.indexOf(",")+1, original.length());
 							} else if(i == strArr.length - 1) {
@@ -98,8 +99,8 @@ public class NumberSubstringUtil {
 						}
 					} else {
 						//包含-，是范围  3-7
-						Integer low = getLeftInt(strArr[i]);
-						Integer high = getRightInt(strArr[i]);
+						long low = getLeft(strArr[i]);
+						long high = getRight(strArr[i]);
 						if(low == current) {  //current = 3
 							if(current + 1 == high) {   //3-4
 								if(i == 0) {	//第一个值
@@ -185,36 +186,10 @@ public class NumberSubstringUtil {
 			return "";
 		}
 	}
-
-
-
-	/**
-	 * 返回最小值
-	 * @param lower
-	 * @return
-	 */
-	private static Integer getLeftInt(String str) {
-		if(str!=null && str.contains("-")) {
-			return Integer.valueOf(str.split("-")[0]);
-		}
-		return Integer.valueOf(str);
-	}
 	
-	/**
-	 * 返回最小值
-	 * @param lower
-	 * @return
-	 */
-	private static Integer getRightInt(String str) {
-		if(str!=null && str.contains("-")) {
-			return Integer.valueOf(str.split("-")[1]);
-		}
-		return Integer.valueOf(str);
-	}
-
 	public static void main(String[] args) {
 		long t1 = System.currentTimeMillis();
-		String s = NumberSubstringUtil.substringNumber("6,9-15,22,24,28", "6,28");
+		String s = NumberSubstringUtil.substringNumber("1-1000", "1-500");
 		long t2 = System.currentTimeMillis();
 		System.out.println(s + "    "+(t2-t1));
 		System.out.println(55/4);

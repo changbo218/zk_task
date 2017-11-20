@@ -19,7 +19,6 @@ import com.bj58.lbg.zk_task.core.util.NumberSubstringUtil;
 import com.bj58.lbg.zk_task.task.dto.TaskProgress;
 
 public abstract class TaskService implements Runnable {
-	boolean flag = false;
 	private ZooKeeper zk;
 	private Watcher watcher;
 	private String nodeName;
@@ -160,12 +159,6 @@ public abstract class TaskService implements Runnable {
 			progress.setErrorIds(NumberConcatUtil.concatNumber(progress.getErrorIds(), id));
 			memcacheComp.set(taskData.getId() + "_" + taskData.getTaskId() + "_error", progress.getErrorIds());
 		}
-		System.out.println("处理完成的id是"+id + " 开始等待");
-		while(!flag) {
-			Thread.sleep(15000);
-			flag = true;
-		}
-		System.out.println("等待结束");
 	}
 
 	/**
@@ -219,8 +212,7 @@ public abstract class TaskService implements Runnable {
 	/**
 	 * 更新NewData列表
 	 */
-	private boolean updateNewDataList(TaskData taskData, NewData errorData)
-			throws KeeperException, InterruptedException {
+	private boolean updateNewDataList(TaskData taskData, NewData errorData) throws KeeperException, InterruptedException {
 		try {
 			// task节点不需要监听新数据节点的变化
 			Stat stat = zk.exists("/root/newdata", false);

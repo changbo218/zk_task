@@ -8,7 +8,7 @@ import java.util.List;
  * @author 常博
  *
  */
-public class NumberGroupUtil {
+public class NumberGroupUtil extends NumberUtil{
 	/**
 	 * 数据分组
 	 * 该方法是把一个数字的字符串拆成size份，用于给task分配
@@ -19,14 +19,14 @@ public class NumberGroupUtil {
 	public static List<String> groupNumber(String original, int size) {
 		if(original==null || original.length() == 0 || size <= 0) return null;
 		List<String> list = new ArrayList<String>();
-		int dataTotalCount = getDataTotalCount(original);	//总数据量
+		long dataTotalCount = getDataTotalCount(original);	//总数据量
 		//每份对应分得的数量
-		int perCount = getPerCount(dataTotalCount, size);
+		long perCount = getPerCount(dataTotalCount, size);
 		String[] strArr = original.split(",");
 		int i=-1;
 		loop: for(int j=1;j<=size;j++) {
 			String data = "";	 
-			int currentCount = 0;
+			long currentCount = 0;
 			//如果j==size，表示只剩下最后的节点，这时只要把后面的补全就行了
 			if(j==size && i<strArr.length - 1) {
 				i++;
@@ -63,7 +63,7 @@ public class NumberGroupUtil {
 					}
 				} else {
 					//包含-
-					int count = getCount(strArr[i]);
+					long count = getCount(strArr[i]);
 					if(currentCount + count <= perCount) {
 						//这段数字的范围可以全部覆盖
 						currentCount = currentCount + count;
@@ -78,10 +78,10 @@ public class NumberGroupUtil {
 						}
 					} else if(currentCount + count > perCount) {
 						//这段数据的范围不能完全覆盖
-						int margin = perCount - currentCount;
+						long margin = perCount - currentCount;
 						//这里面的margin一定会小于count， 且count最小一定是2，margin最小一定是1
-						int left = getLeftInt(strArr[i]);
-						int right = getRightInt(strArr[i]);
+						long left = getLeft(strArr[i]);
+						long right = getRight(strArr[i]);
 						//把左侧和右侧对应的数字范围计算出来
 						//左侧添加到data中，
 						//右侧赋值给strArr[i],即加到数组中,并且i--，把下标移到该数据之前
@@ -130,8 +130,8 @@ public class NumberGroupUtil {
 	 * @param size
 	 * @return
 	 */
-	private static int getPerCount(int dataTotalCount, int size) {
-		int perCount = dataTotalCount / size ;
+	private static long getPerCount(long dataTotalCount, int size) {
+		long perCount = dataTotalCount / size ;
 		if(perCount == 0) {
 			perCount = 1;
 		}
@@ -142,13 +142,13 @@ public class NumberGroupUtil {
 	 * 返回这个数据中包含数字的个数
 	 * @param original
 	 */
-	private static int getDataTotalCount(String original) {
-		int dataCount = 0;
+	private static long getDataTotalCount(String original) {
+		long dataCount = 0;
 		String[] strArr = original.split(",");
 		for(int i=0;i<strArr.length;i++) {
 			if(strArr[i].contains("-")) {
-				int left = getLeftInt(strArr[i]);
-				int right = getRightInt(strArr[i]);
+				long left = getLeft(strArr[i]);
+				long right = getRight(strArr[i]);
 				dataCount = dataCount + (right - left + 1);
 			} else {
 				dataCount++;
@@ -157,35 +157,11 @@ public class NumberGroupUtil {
 		return dataCount;
 	}
 	
-	/**
-	 * 返回最小值
-	 * @param lower
-	 * @return
-	 */
-	private static Integer getLeftInt(String str) {
-		if(str!=null && str.contains("-")) {
-			return Integer.valueOf(str.split("-")[0]);
-		}
-		return Integer.valueOf(str);
-	}
-	
-	/**
-	 * 返回最小值
-	 * @param lower
-	 * @return
-	 */
-	private static Integer getRightInt(String str) {
-		if(str!=null && str.contains("-")) {
-			return Integer.valueOf(str.split("-")[1]);
-		}
-		return Integer.valueOf(str);
-	}
-	
-	private static Integer getCount(String str) {
+	private static long getCount(String str) {
 		if(str==null || str.length() == 0) return 0;
 		if(str.contains("-")) {
-			int left = getLeftInt(str);
-			int right = getRightInt(str);
+			long left = getLeft(str);
+			long right = getRight(str);
 			return (right - left + 1);
 		} else {
 			return 1;

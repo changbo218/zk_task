@@ -92,7 +92,7 @@ public class ScheduleDataChangeService extends ScheduleService{
 	 * @throws KeeperException 
 	 */
 	private void publishNewData(NewData newData) throws KeeperException, InterruptedException {
-		List<TaskData> _taskDatas = new ArrayList<TaskData>();   //存放分配好的任务数据
+		List<TaskData> pubTaskDatas = new ArrayList<TaskData>();   //存放分配好的任务数据
 		List<String> nodes = zk.getChildren("/root/task", watcher);
 		int nodeSize = nodes.size();
 		List<String> list = NumberGroupUtil.groupNumber(newData.getDataIds(), nodeSize);
@@ -107,31 +107,32 @@ public class ScheduleDataChangeService extends ScheduleService{
 				taskData.setStatus(Constant.STATUS_TASKDATA_NOSTART);
 				taskData.setCreatetime(new Date());
 				taskData.setVersion(newData.getVersion());
-				_taskDatas.add(taskData);
+				pubTaskDatas.add(taskData);
 			}
 		}
-		addTasks(_taskDatas);
+		System.out.println("分配好的task数据："+pubTaskDatas);
+		addTasks(pubTaskDatas);
 	}
 
 	/**
 	 * 把分配好的任务加入到/root/task下
-	 * @param _taskDatas
+	 * @param pubTaskDatas
 	 * @throws KeeperException
 	 * @throws InterruptedException
 	 */
-	private void addTasks(List<TaskData> _taskDatas) throws KeeperException, InterruptedException {
+	private void addTasks(List<TaskData> pubTaskDatas) throws KeeperException, InterruptedException {
 		try {
 			Stat stat = zk.exists("/root/task", watcher);
 			List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData("/root/task", watcher, null));
 			if(taskDatas == null) {
 				taskDatas = new ArrayList<TaskData>();
 			}
-			taskDatas.addAll(_taskDatas);
+			taskDatas.addAll(pubTaskDatas);
 			zk.setData("/root/task", ByteUtil.objectToByte(taskDatas), stat.getVersion());
 		} catch (KeeperException.BadVersionException e) {
 			// 如果发生版本错误的异常
 			System.out.println("出现版本异常" + e.getMessage());
-			addTasks(_taskDatas);
+			addTasks(pubTaskDatas);
 		}
 	}
 }

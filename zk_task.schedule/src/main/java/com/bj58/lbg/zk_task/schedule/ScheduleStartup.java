@@ -26,6 +26,8 @@ public class ScheduleStartup {
 		}
 		if(zk.exists("/root/newdata", watcher) == null) {
 			zk.create("/root/newdata", ByteUtil.objectToByte(new ArrayList<NewData>()), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+			//保证对/root/newdata的监听
+			zk.exists("/root/newdata", watcher);
 		}
 		zk.create("/root/newdata/schedule_node", null, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
 		zk.getChildren("/root/task", watcher);

@@ -22,11 +22,11 @@ public class DataTest {
 		String hosts = "112.124.116.226:2181,112.124.116.226:2182,112.124.116.226:2183";
 		int sessionTimeout = 5000;
 		ZooKeeper zk = new ZooKeeper(hosts, sessionTimeout, null);
-		List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData("/root/newdata", false, null));
-//		List<NewData> newDataList = new ArrayList<NewData>();
+//		List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData("/root/newdata", false, null));
+		List<NewData> newDataList = new ArrayList<NewData>();
 		NewData newData = new NewData();
 		newData.setTaskId(System.currentTimeMillis());
-		newData.setDataIds("5734312-5735311");
+		newData.setDataIds("1-10000");
 		newData.setStatus(Constant.STATUS_NEWDATA_NOT_PUBLISH);
 		newData.setVersion(1);
 		newDataList.add(newData);
