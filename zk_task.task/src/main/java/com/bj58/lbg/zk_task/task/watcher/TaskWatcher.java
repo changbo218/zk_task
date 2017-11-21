@@ -3,6 +3,7 @@ package com.bj58.lbg.zk_task.task.watcher;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -22,10 +23,14 @@ public class TaskWatcher implements Watcher {
 	private String nodeName;
 	private CountDownLatch countDownLatch;
 	private TaskService taskService;
+	private String taskPath;
+	private String schedulePath;
 	
-	public TaskWatcher(CountDownLatch countDownLatch, TaskService taskService) {
+	public TaskWatcher(CountDownLatch countDownLatch, TaskService taskService, String taskPath, String schedulePath) {
 		this.countDownLatch = countDownLatch;
 		this.taskService = taskService;
+		this.taskPath = taskPath;
+		this.schedulePath = schedulePath;
 	}
 	
 	/**
@@ -40,9 +45,9 @@ public class TaskWatcher implements Watcher {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		if (event.getPath().equals("/root/task")) {
+		if (event.getPath().equals(taskPath)) {
 			if(taskService != null) {
-				taskService.initProperties(ZookeeperTaskUtil.getZookeeper(), this, nodeName);
+				taskService.initProperties(ZookeeperTaskUtil.getZookeeper(), this, nodeName, taskPath, schedulePath);
 			}
 			pool.execute(taskService);
 		}

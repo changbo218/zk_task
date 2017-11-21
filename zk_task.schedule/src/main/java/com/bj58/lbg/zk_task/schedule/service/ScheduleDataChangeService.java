@@ -17,8 +17,8 @@ import com.bj58.lbg.zk_task.core.util.NumberGroupUtil;
 
 public class ScheduleDataChangeService extends ScheduleService{
 
-	public ScheduleDataChangeService(ZooKeeper zk, Watcher watcher) {
-		super(zk, watcher);
+	public ScheduleDataChangeService(ZooKeeper zk, Watcher watcher, String schedulePath, String taskPath) {
+		super(zk, watcher, schedulePath, taskPath);
 	}
 	
 	@Override
@@ -31,8 +31,8 @@ public class ScheduleDataChangeService extends ScheduleService{
 	 */
 	public void nodeDataChangeForNewData() {
 		try {
-			Stat stat = zk.exists("/root/newdata", watcher);
-			List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData("/root/newdata", watcher, null));
+			Stat stat = zk.exists(schedulePath, watcher);
+			List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData(schedulePath, watcher, null));
 			System.out.println("nodeDataChange: " + newDataList);
 			for (NewData newData : newDataList) {
 				if(newData.getStatus() == Constant.STATUS_NEWDATA_NOT_PUBLISH) {
@@ -51,7 +51,7 @@ public class ScheduleDataChangeService extends ScheduleService{
 	private void changeNewDataStatus(NewData newData, List<NewData> newDataList, Stat stat) throws KeeperException, InterruptedException {
 		newData.setStatus(Constant.STATUS_NEWDATA_PUBLISH);
 		try {
-			stat = zk.setData("/root/newdata", ByteUtil.objectToByte(newDataList), stat.getVersion());
+			stat = zk.setData(schedulePath, ByteUtil.objectToByte(newDataList), stat.getVersion());
 			if(stat != null) {
 				//如果更新成功了，则开始分配数据
 				System.out.println("更新newData状态成功"+newDataList);
@@ -60,22 +60,22 @@ public class ScheduleDataChangeService extends ScheduleService{
 		} catch (KeeperException.BadVersionException e) {
 			// 如果发生版本错误的异常
 			System.out.println("出现版本异常" + e.getMessage());
-			//发生一次版本错误，就说明数据肯定是旧的，后面的更细肯定失败，就需要再重新取一次数据
+			//发生一次版本错误，就说明数据肯定是旧的，后面的更新肯定失败，就需要再重新取一次数据
 			getNewDataForUpdateForPublishStatus();
 		}
 	}
 	
 	/**
-	 * 重新获取/root/newdata下的最新值来更新newData的状态
+	 * 重新获取schedulePath下的最新值来更新newData的状态
 	 * @param taskDataId
 	 * @throws KeeperException
 	 * @throws InterruptedException
 	 */
 	private void getNewDataForUpdateForPublishStatus() throws KeeperException, InterruptedException {
 		//睡眠一秒后重新获取最新值
-		Thread.sleep(100);
-		Stat stat = zk.exists("/root/newdata", watcher);
-		List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData("/root/newdata", watcher, null));
+		Thread.sleep(1000);
+		Stat stat = zk.exists(schedulePath, watcher);
+		List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData(schedulePath, watcher, null));
 		for (NewData newData : newDataList) {
 			if(newData.getStatus() == Constant.STATUS_NEWDATA_NOT_PUBLISH) {
 				changeNewDataStatus(newData, newDataList, stat);
@@ -93,7 +93,7 @@ public class ScheduleDataChangeService extends ScheduleService{
 	 */
 	private void publishNewData(NewData newData) throws KeeperException, InterruptedException {
 		List<TaskData> pubTaskDatas = new ArrayList<TaskData>();   //存放分配好的任务数据
-		List<String> nodes = zk.getChildren("/root/task", watcher);
+		List<String> nodes = zk.getChildren(taskPath, watcher);
 		int nodeSize = nodes.size();
 		List<String> list = NumberGroupUtil.groupNumber(newData.getDataIds(), nodeSize);
 		if(list != null && list.size() > 0) {
@@ -115,20 +115,20 @@ public class ScheduleDataChangeService extends ScheduleService{
 	}
 
 	/**
-	 * 把分配好的任务加入到/root/task下
+	 * 把分配好的任务加入到taskPath下
 	 * @param pubTaskDatas
 	 * @throws KeeperException
 	 * @throws InterruptedException
 	 */
 	private void addTasks(List<TaskData> pubTaskDatas) throws KeeperException, InterruptedException {
 		try {
-			Stat stat = zk.exists("/root/task", watcher);
-			List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData("/root/task", watcher, null));
+			Stat stat = zk.exists(taskPath, watcher);
+			List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData(taskPath, watcher, null));
 			if(taskDatas == null) {
 				taskDatas = new ArrayList<TaskData>();
 			}
 			taskDatas.addAll(pubTaskDatas);
-			zk.setData("/root/task", ByteUtil.objectToByte(taskDatas), stat.getVersion());
+			zk.setData(taskPath, ByteUtil.objectToByte(taskDatas), stat.getVersion());
 		} catch (KeeperException.BadVersionException e) {
 			// 如果发生版本错误的异常
 			System.out.println("出现版本异常" + e.getMessage());

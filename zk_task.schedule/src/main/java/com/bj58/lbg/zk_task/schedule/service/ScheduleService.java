@@ -7,11 +7,15 @@ public class ScheduleService implements Runnable{
 
 	protected ZooKeeper zk;
 	protected Watcher watcher;
+	protected String schedulePath;
+	protected String taskPath;
 	
-	public ScheduleService(ZooKeeper zk, Watcher watcher) {
+	public ScheduleService(ZooKeeper zk, Watcher watcher, String schedulePath, String taskPath) {
 		super();
 		this.watcher = watcher;
 		this.zk = zk;
+		this.schedulePath = schedulePath;
+		this.taskPath = taskPath;
 	}
 
 	public void run() {}

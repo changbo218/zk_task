@@ -22,6 +22,8 @@ public abstract class TaskService implements Runnable {
 	private ZooKeeper zk;
 	private Watcher watcher;
 	private String nodeName;
+	private String taskPath;
+	private String schedulePath;
 	private MemcacheComp memcacheComp = MemcacheComp.getMemcacheComp();
 
 	public TaskService(ZooKeeper zk, Watcher watcher, String nodeName) {
@@ -39,11 +41,14 @@ public abstract class TaskService implements Runnable {
 	 * @param zk
 	 * @param watcher
 	 * @param nodeName
+	 * @param taskPath
 	 */
-	public void initProperties(ZooKeeper zk, Watcher watcher, String nodeName) {
+	public void initProperties(ZooKeeper zk, Watcher watcher, String nodeName, String taskPath, String schedulePath) {
 		this.zk = zk;
 		this.watcher = watcher;
 		this.nodeName = nodeName;
+		this.taskPath = taskPath;
+		this.schedulePath = schedulePath;
 	}
 
 
@@ -59,8 +64,8 @@ public abstract class TaskService implements Runnable {
 	public void findTaskDataToProcess() {
 		try {
 			// 先取版本，后取数据
-			Stat stat = zk.exists("/root/task", watcher);
-			List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData("/root/task", watcher, null));
+			Stat stat = zk.exists(taskPath, watcher);
+			List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData(taskPath, watcher, null));
 			if (taskDatas != null && taskDatas.size() > 0) {
 				for (TaskData taskData : taskDatas) {
 					// 如果需要处理的节点是本节点且这段数据还处于未处理的状态
@@ -79,7 +84,7 @@ public abstract class TaskService implements Runnable {
 	private void changeDoingStatusForTaskData(List<TaskData> taskDatas, TaskData taskData, Stat stat) throws Exception {
 		try {
 			taskData.setStatus(Constant.STATUS_TASKDATA_DOING);
-			stat = zk.setData("/root/task", ByteUtil.objectToByte(taskDatas), stat.getVersion());
+			stat = zk.setData(taskPath, ByteUtil.objectToByte(taskDatas), stat.getVersion());
 			// 哪个taskData被更新成功，就意味着这个任务处理者具备了该taskData的处理权，可以对其进行业务处理
 			if (stat != null) {
 				// stat!=null 表示这个taskData更新成功，那么就可以继续对这个任务进行处理
@@ -138,10 +143,9 @@ public abstract class TaskService implements Runnable {
 	/**
 	 * 执行任务
 	 * 
-	 * @param taskData
-	 * @param progressDTO
-	 * @param id
-	 *            任务数据的id
+	 * @param taskData 任务对象
+	 * @param progress 记录成功和失败的id
+	 * @param id 任务数据的id
 	 * @throws Exception
 	 */
 	private void doAction(TaskData taskData, TaskProgress progress, int id) throws Exception {
@@ -151,10 +155,9 @@ public abstract class TaskService implements Runnable {
 				doAction(id, taskData.getVersion());
 			}
 			// 线程处理时，每处理完一个数据，就要把id加到完成队列(字符串)里--memcache
-			// put 到memcache里
 			progress.setSuccessIds(NumberConcatUtil.concatNumber(progress.getSuccessIds(), id));
 			memcacheComp.set(taskData.getId() + "_" + taskData.getTaskId() + "_success", progress.getSuccessIds());
-		} catch (Exception e) {
+		} catch (TaskHandleException e) {
 			// 3. 处理过程中如果出错，则把错误的id加到errorIds中
 			progress.setErrorIds(NumberConcatUtil.concatNumber(progress.getErrorIds(), id));
 			memcacheComp.set(taskData.getId() + "_" + taskData.getTaskId() + "_error", progress.getErrorIds());
@@ -194,16 +197,16 @@ public abstract class TaskService implements Runnable {
 	 */
 	private void updateTaskDataList(TaskData taskData) throws KeeperException, InterruptedException {
 		try {
-			// /root/task这个节点路径需要持续监听
-			Stat stat = zk.exists("/root/task", watcher);
-			List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData("/root/task", watcher, null));
+			// taskPath这个节点路径需要持续监听
+			Stat stat = zk.exists(taskPath, watcher);
+			List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData(taskPath, watcher, null));
 			for (TaskData data : taskDatas) {
 				if (data.getId().equals(taskData.getId())) {
 					taskDatas.remove(data);
 					break;
 				}
 			}
-			zk.setData("/root/task", ByteUtil.objectToByte(taskDatas), stat.getVersion());
+			zk.setData(taskPath, ByteUtil.objectToByte(taskDatas), stat.getVersion());
 		} catch (KeeperException.BadVersionException e) {
 			updateTaskDataList(taskData);
 		}
@@ -215,8 +218,8 @@ public abstract class TaskService implements Runnable {
 	private boolean updateNewDataList(TaskData taskData, NewData errorData) throws KeeperException, InterruptedException {
 		try {
 			// task节点不需要监听新数据节点的变化
-			Stat stat = zk.exists("/root/newdata", false);
-			List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData("/root/newdata", false, null));
+			Stat stat = zk.exists(schedulePath, false);
+			List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData(schedulePath, false, null));
 			Iterator<NewData> it = newDataList.iterator();
 			while (it.hasNext()) {
 				NewData newData = it.next();
@@ -241,7 +244,7 @@ public abstract class TaskService implements Runnable {
 				}
 			}
 			// 正常来说，一个task执行完，一定会更新newDataList，这里就不在判断了，就直接setData了
-			stat = zk.setData("/root/newdata", ByteUtil.objectToByte(newDataList), stat.getVersion());
+			stat = zk.setData(schedulePath, ByteUtil.objectToByte(newDataList), stat.getVersion());
 			if (stat != null) {
 				return true;
 			}
@@ -285,7 +288,7 @@ public abstract class TaskService implements Runnable {
 	}
 
 	/**
-	 * 重新获取/root/task下的最新值来更新taskData的状态
+	 * 重新获取taskPath下的最新值来更新taskData的状态
 	 * 
 	 * @param taskDataId
 	 * @throws KeeperException
@@ -293,8 +296,8 @@ public abstract class TaskService implements Runnable {
 	 */
 	private void getNewDataForUpdateForDoingStatus(long taskDataId) throws Exception {
 		// 睡眠一秒后重新获取最新值
-		Stat stat = zk.exists("/root/task", watcher);
-		List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData("/root/task", watcher, null));
+		Stat stat = zk.exists(taskPath, watcher);
+		List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData(taskPath, watcher, null));
 		if (taskDatas != null && taskDatas.size() > 0) {
 			for (TaskData taskData : taskDatas) {
 				if (nodeName.equals(taskData.getNodeName()) && taskData.getStatus() == Constant.STATUS_TASKDATA_NOSTART) {
@@ -311,5 +314,5 @@ public abstract class TaskService implements Runnable {
 	 * 这里要注意，为了防止大量的重复错误调用，业务方需要根据version的值做特殊处理，默认执行100次之后就会认为成功
 	 * @throws TaskHandleException 如果执行时抛出此异常，就任务该id执行失败，需重新执行
 	 */
-	public abstract void doAction(int id, int version) throws TaskHandleException;
+	public abstract void doAction(long id, int version) throws TaskHandleException;
 }

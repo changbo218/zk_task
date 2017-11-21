@@ -26,7 +26,7 @@ public class DataTest {
 		List<NewData> newDataList = new ArrayList<NewData>();
 		NewData newData = new NewData();
 		newData.setTaskId(System.currentTimeMillis());
-		newData.setDataIds("1-10000");
+		newData.setDataIds("5734312-11656983");
 		newData.setStatus(Constant.STATUS_NEWDATA_NOT_PUBLISH);
 		newData.setVersion(1);
 		newDataList.add(newData);

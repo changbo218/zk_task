@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 /**
- * 任务列表
+ * 任务数据对象
  * @author 常博
  *
  */
@@ -16,7 +16,7 @@ public class TaskData implements Serializable{
 	private static final long serialVersionUID = -6736758392991335267L;
 	private String id;			//这个任务的独有id，可以唯一确定这个任务的id，默认处理节点的name+时间戳
 	private long taskId;		 //对应NewData总任务的编号 默认取时间戳
-	private String nodeName;  //节点编号  001
+	private String nodeName;  //节点名称
 	private int status; 	 //0 未处理   1正在处理  2处理完成
 	private String dataIds;	//要处理的数据范围 1-1500000
 	private Date createtime;	// 创建时间

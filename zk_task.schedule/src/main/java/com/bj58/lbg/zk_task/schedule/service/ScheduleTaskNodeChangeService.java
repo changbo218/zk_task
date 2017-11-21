@@ -21,8 +21,8 @@ public class ScheduleTaskNodeChangeService extends ScheduleService{
 
 	private MemcacheComp memcacheComp = MemcacheComp.getMemcacheComp();
 	
-	public ScheduleTaskNodeChangeService(ZooKeeper zk, Watcher watcher) {
-		super(zk, watcher);
+	public ScheduleTaskNodeChangeService(ZooKeeper zk, Watcher watcher, String schedulePath, String taskPath) {
+		super(zk, watcher, schedulePath, taskPath);
 	}
 	
 	@Override
@@ -36,12 +36,12 @@ public class ScheduleTaskNodeChangeService extends ScheduleService{
 	public void processTaskNodeChildrenChanged() {
 		try {
 			//1. 继续保持监控
-			List<String> children = zk.getChildren("/root/task", watcher); 
+			List<String> children = zk.getChildren(taskPath, watcher); 
 			//2. 遍历newdata里所有分配了的对象，看看哪些对象的哪些数据节点不在当前存活的节点（当然也可能出现的情况是新增了task节点）
-			Stat newDataStat = zk.exists("/root/newdata", watcher);
-			List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData("/root/newdata", watcher, null));
-			Stat taskDataStat = zk.exists("/root/task", watcher);
-			List<TaskData> taskDataList = (List<TaskData>) ByteUtil.byteToObject(zk.getData("/root/task", watcher, null));
+			Stat newDataStat = zk.exists(schedulePath, watcher);
+			List<NewData> newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData(schedulePath, watcher, null));
+			Stat taskDataStat = zk.exists(taskPath, watcher);
+			List<TaskData> taskDataList = (List<TaskData>) ByteUtil.byteToObject(zk.getData(taskPath, watcher, null));
 			//这里要已newData的数据为准，（因为更新时，先更新newData，后更新taskData, 可能出现newDataList不存在但是taskDataList存在的情况，这个情况会由其他线程来扫描处理），
 			//所以要newData依赖taskData里的分配任务来对比
 			List<TaskData> pendingTaskDataList = findErrorNodeDataForNewData(children, newDataList, taskDataList);
@@ -57,22 +57,29 @@ public class ScheduleTaskNodeChangeService extends ScheduleService{
 
 	/**
 	 * 处理包含不存在节点的数据
-	 * 1. 从这些节点中，找出已成功完成了的数据
-	 * 2. 更新newData列表里的数据（把成功了的数据从列表里去掉）
-	 * 3. 更新taskData列表的数据（把错误节点对象去掉，把剩余的节点数据分配到列表里）
-	 * 2要在3之前来执行
-	 * 这里面有很重要的一点，如果2执行成功了，3失败了，这里会有其他的schedule节点来继续执行
+	 * 1. 更新newData列表里的数据（从这些节点中，找出已成功完成了的数据, 把成功了的数据从列表里去掉）
+	 * 2. 更新taskData列表的数据（把错误节点对象去掉，把剩余的节点数据分配到列表里）
+	 * 1要在2之前来执行
+	 * 这里面有很重要的一点，如果1执行成功了，2失败了，这里会有其他的schedule节点来继续执行
 	 * 因为多个schedule会同时收到节点变化的通知，他们同时去处理这个业务，只有一个节点能处理成功，
-	 * 当其他节点在第二次尝试更新的时候，如果2成功了，再次执行也无影响；3如果之前失败，则成功执行3；3如果之前成功，则已经找不到失败的节点，方法自然完成
+	 * 当其他节点在第二次尝试更新的时候，如果1成功了，再次执行也无影响；2如果之前失败，则成功执行2；2如果之前成功，则已经找不到失败的节点，方法自然完成
+	 * @param pendingTaskDataList 包含错误节点的任务列表
 	 * @throws Exception 
 	 */
 	private void processPendingTaskDataList(List<TaskData> pendingTaskDataList, List<NewData> newDataList, List<TaskData> taskDataList, Stat newDataStat, Stat taskDataStat) throws Exception {
 		//从newData列表中去掉所有已经成功了的数据
 		processNewDataList(pendingTaskDataList, newDataList, newDataStat);
-		//从taskData列表中去掉所有pending节点数据, 并把剩余的dataid重新分配
+		//从taskData列表中去掉所有pending节点数据, 并把剩余的dataIds重新分配
 		processTaskDataList(pendingTaskDataList, taskDataList, taskDataStat);
 	}
 
+	/**
+	 * 从taskData列表中去掉所有pending节点数据, 并把剩余的dataIds重新分配
+	 * @param pendingTaskDataList
+	 * @param taskDataList
+	 * @param taskDataStat
+	 * @throws Exception
+	 */
 	private void processTaskDataList(List<TaskData> pendingTaskDataList, List<TaskData> taskDataList, Stat taskDataStat) throws Exception {
 		try {
 			for (TaskData pendingTaskData : pendingTaskDataList) {
@@ -86,7 +93,7 @@ public class ScheduleTaskNodeChangeService extends ScheduleService{
 				List<TaskData> surplusTaskDataList = publishSurplusIdsAgain(surplusIds, pendingTaskData); 
 				taskDataList.addAll(surplusTaskDataList);
 			}
-			zk.setData("/root/task", ByteUtil.objectToByte(taskDataList), taskDataStat.getVersion());
+			zk.setData(taskPath, ByteUtil.objectToByte(taskDataList), taskDataStat.getVersion());
 			System.out.println("处理错误节点之后的taskDataList： " + taskDataList);
 		} catch (KeeperException.BadVersionException e) {
 			//这里要注意： 当发生版本更新异常时，要对整个业务做重新获取和比较，因为这里面涉及到的所有任务有可能都产生了变化
@@ -114,7 +121,7 @@ public class ScheduleTaskNodeChangeService extends ScheduleService{
 					subNewData.setDataIds(unfinishNewDataIds);
 				}
 			}
-			zk.setData("/root/newdata", ByteUtil.objectToByte(newDataList), newDataStat.getVersion());
+			zk.setData(schedulePath, ByteUtil.objectToByte(newDataList), newDataStat.getVersion());
 			System.out.println("处理错误节点数据之后的newDataList: " + newDataList);
 		} catch (KeeperException.BadVersionException e) {
 			//这里要注意： 当发生版本更新异常时，要对整个业务做重新获取和比较，因为这里面涉及到的所有任务有可能都产生了变化
@@ -149,7 +156,7 @@ public class ScheduleTaskNodeChangeService extends ScheduleService{
 	 */
 	private List<TaskData> publishSurplusIdsAgain(String surplusIds, TaskData pendingTaskData) throws KeeperException, InterruptedException {
 		List<TaskData> _taskDatas = new ArrayList<TaskData>();   //存放分配好的任务数据
-		List<String> nodes = zk.getChildren("/root/task", watcher);
+		List<String> nodes = zk.getChildren(taskPath, watcher);
 		int nodeSize = nodes.size();
 		List<String> list = NumberGroupUtil.groupNumber(surplusIds, nodeSize);
 		if(list != null && list.size() > 0) {
@@ -169,8 +176,8 @@ public class ScheduleTaskNodeChangeService extends ScheduleService{
 	}
 	
 	/**
-	 * 获取涉及到错误节点的数据
-	 * @param children
+	 * 获取所有错误节点的任务
+	 * @param children 当前存在的节点nodename
 	 * @param newDataList
 	 * @param taskDataList
 	 * @return
@@ -178,7 +185,9 @@ public class ScheduleTaskNodeChangeService extends ScheduleService{
 	private List<TaskData> findErrorNodeDataForNewData(List<String> children, List<NewData> newDataList, List<TaskData> taskDataList) {
 		List<TaskData> inexistTastDataList = new ArrayList<TaskData>();
 		for (NewData newData : newDataList) {
+			//先根据newData找对应的taskData列表
 			List<TaskData> subTaskDatas = getTaskDatasForNewData(newData, taskDataList);
+			//在根据subTaskDatas找出不存在的节点数据
 			List<TaskData> _inexist = compareNodesForErrorTaskData(subTaskDatas, children);
 			if(_inexist != null && _inexist.size() > 0) {
 				inexistTastDataList.addAll(_inexist);

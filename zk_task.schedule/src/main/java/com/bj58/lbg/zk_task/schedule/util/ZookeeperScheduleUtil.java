@@ -18,9 +18,6 @@ public class ZookeeperScheduleUtil {
 				if(zk == null) {
 					try {
 						zk = new ZooKeeper(hosts, sessionTimeout, watcher);
-						if(zk != null) {
-							watcher.openListener();
-						}
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
