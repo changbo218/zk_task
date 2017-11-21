@@ -32,10 +32,14 @@ public class CompensationHandler implements Runnable {
 	
 	private ZooKeeper zk;
 	private Watcher watcher;
+	private String schedulePath;
+	private String taskPath;
 	
-	public CompensationHandler(ZooKeeper zk, Watcher watcher) {
+	public CompensationHandler(ZooKeeper zk, Watcher watcher, String schedulePath, String taskPath) {
 		this.zk = zk;
 		this.watcher = watcher;
+		this.schedulePath = schedulePath;
+		this.taskPath = taskPath;
 	}
 	
 	ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(10);
@@ -106,7 +110,7 @@ public class CompensationHandler implements Runnable {
 		}
 		if(flag) {
 			try {
-				zk.setData("/root/task", ByteUtil.objectToByte(taskDataList), statTaskData.getVersion());
+				zk.setData(taskPath, ByteUtil.objectToByte(taskDataList), statTaskData.getVersion());
 			} catch (KeeperException.BadVersionException e) {
 				//需要出现版本错误，就要重新取数据进行比较
 				refreshNewData();
@@ -134,7 +138,7 @@ public class CompensationHandler implements Runnable {
 		}
 		if(flag) {
 			try {
-				zk.setData("/root/newdata", ByteUtil.objectToByte(newDataList), statNewData.getVersion());
+				zk.setData(schedulePath, ByteUtil.objectToByte(newDataList), statNewData.getVersion());
 			} catch (KeeperException.BadVersionException e) {
 				//需要出现版本错误，就要重新取数据进行比较
 				refreshNewData();
@@ -190,8 +194,8 @@ public class CompensationHandler implements Runnable {
 	 * @throws InterruptedException
 	 */
 	private void refreshTaskData() throws KeeperException, InterruptedException {
-		statTaskData = zk.exists("/root/task", watcher);
-		taskDataList = (List<TaskData>) ByteUtil.byteToObject(zk.getData("/root/task", watcher, null));
+		statTaskData = zk.exists(taskPath, watcher);
+		taskDataList = (List<TaskData>) ByteUtil.byteToObject(zk.getData(taskPath, watcher, null));
 	}
 
 	/**
@@ -200,8 +204,8 @@ public class CompensationHandler implements Runnable {
 	 * @throws InterruptedException
 	 */
 	private void refreshNewData() throws KeeperException, InterruptedException {
-		statNewData = zk.exists("/root/newdata", watcher);
-		newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData("/root/newdata", watcher, null));
+		statNewData = zk.exists(schedulePath, watcher);
+		newDataList = (List<NewData>) ByteUtil.byteToObject(zk.getData(schedulePath, watcher, null));
 	}
 
 	private void judgeEmptyForNewDataIds() throws KeeperException, InterruptedException {
@@ -218,7 +222,7 @@ public class CompensationHandler implements Runnable {
 		}
 		if(flag) {
 			try {
-				zk.setData("/root/newData", ByteUtil.objectToByte(newDataList), statNewData.getVersion());
+				zk.setData(schedulePath, ByteUtil.objectToByte(newDataList), statNewData.getVersion());
 			} catch (KeeperException.BadVersionException e) {
 				refreshNewData();
 				judgeEmptyForNewDataIds();
@@ -240,7 +244,7 @@ public class CompensationHandler implements Runnable {
 		}
 		if(flag) {
 			try {
-				zk.setData("/root/task", ByteUtil.objectToByte(taskDataList), statTaskData.getVersion());
+				zk.setData(taskPath, ByteUtil.objectToByte(taskDataList), statTaskData.getVersion());
 			} catch (KeeperException.BadVersionException e) {
 				refreshTaskData();
 				judgeEmptyForTaskDataIds();

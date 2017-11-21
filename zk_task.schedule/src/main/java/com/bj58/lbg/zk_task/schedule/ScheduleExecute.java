@@ -65,7 +65,7 @@ public class ScheduleExecute {
 			zk.create(schedulePath+"/schedule_node", null, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
 			zk.getChildren(taskPath, watcher);
 			//数据补偿处理
-			CompensationHandler handler = new CompensationHandler(zk, watcher);
+			CompensationHandler handler = new CompensationHandler(zk, watcher, schedulePath, taskPath);
 			handler.dataCompensation();
 			Thread.sleep(Integer.MAX_VALUE);
 		} catch (Exception e) {
