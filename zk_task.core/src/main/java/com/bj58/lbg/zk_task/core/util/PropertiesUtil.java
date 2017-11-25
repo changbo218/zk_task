@@ -16,7 +16,7 @@ public class PropertiesUtil {
 	public static String rootPath;
 	
 	public static void initProperties(String filename) {
-		InputStream fis =PropertiesUtil.class.getResourceAsStream(filename);    
+		InputStream fis =PropertiesUtil.class.getClassLoader().getResourceAsStream(filename);    
 		try {
 			properties.load(fis);
 			initRootPath();
@@ -33,7 +33,7 @@ public class PropertiesUtil {
 	}
 
 	private static void initTaskPath() {
-		int i=1;
+		int i=0;
 		while(true) {
 			String task_path = properties.getProperty("task_path_"+i);
 			if(StringUtils.isNotBlank(task_path)) {
@@ -46,7 +46,7 @@ public class PropertiesUtil {
 	}
 
 	private static void initSchedulePath() {
-		int i=1;
+		int i=0;
 		while(true) {
 			String schedule_path = properties.getProperty("schedule_path_"+i);
 			if(StringUtils.isNotBlank(schedule_path)) {
