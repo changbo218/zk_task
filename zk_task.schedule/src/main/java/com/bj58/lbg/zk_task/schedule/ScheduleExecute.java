@@ -1,7 +1,6 @@
 package com.bj58.lbg.zk_task.schedule;
 
 import java.util.ArrayList;
-import java.util.concurrent.CountDownLatch;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -27,19 +26,19 @@ public class ScheduleExecute {
 	 */
 	public static void startup()  {
 		String rootPath = Constant.DEFAULT_ROOT_PATH;
-		String schedulePath = Constant.DEFAULT_SCHEDULE_PATH;
-		String taskPath = Constant.DEFAULT_TASK_PATH;
+		String schedulePath = rootPath+Constant.DEFAULT_SCHEDULE_PATH;
+		String taskPath = rootPath+Constant.DEFAULT_TASK_PATH;
 		startup(rootPath, schedulePath, taskPath);
 	}
 	
 	/**
 	 * 指定路径启动
-	 * @param path_index 配置文件的索引位置
+	 * @param pathIndex 配置文件的索引位置
 	 */
-	public static void startup(int path_index)  {
+	public static void startup(int pathIndex)  {
 		String rootPath = PropertiesUtil.rootPath;
-		String schedulePath = PropertiesUtil.schedulePaths.get(path_index);
-		String taskPath = PropertiesUtil.taskPaths.get(path_index);
+		String schedulePath = PropertiesUtil.schedulePaths.get(pathIndex);
+		String taskPath = PropertiesUtil.taskPaths.get(pathIndex);
 		startup(rootPath, schedulePath, taskPath);
 	}
 	
@@ -49,7 +48,7 @@ public class ScheduleExecute {
 	 * @param schedulePath  调度路径
 	 * @param taskPath	任务路径
 	 */
-	public static void startup(String rootPath, String schedulePath, String taskPath) {
+	private static void startup(String rootPath, String schedulePath, String taskPath) {
 		try {
 			ScheduleWatcher watcher = new ScheduleWatcher(schedulePath, taskPath);
 			ZookeeperScheduleUtil.init(watcher);
@@ -62,11 +61,12 @@ public class ScheduleExecute {
 				//开启对schedulePath的监听
 				zk.exists(schedulePath, watcher);
 			}
-			zk.create(schedulePath+"/schedule_node", null, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+			String nodeName = zk.create(schedulePath+"/schedule_node", null, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
 			zk.getChildren(taskPath, watcher);
 			//数据补偿处理
 			CompensationHandler handler = new CompensationHandler(zk, watcher, schedulePath, taskPath);
 			handler.dataCompensation();
+			System.out.println("调度节点"+nodeName+"启动完成");
 			Thread.sleep(Integer.MAX_VALUE);
 		} catch (Exception e) {
 			e.printStackTrace();
