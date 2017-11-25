@@ -7,6 +7,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.Watcher.Event.EventType;
 
 import com.bj58.lbg.zk_task.task.service.TaskService;
 import com.bj58.lbg.zk_task.task.util.ZookeeperTaskUtil;
@@ -45,11 +46,13 @@ public class TaskWatcher implements Watcher {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		if (event.getPath().equals(taskPath)) {
-			if(taskService != null) {
-				taskService.initProperties(ZookeeperTaskUtil.getZookeeper(), this, nodeName, taskPath, schedulePath);
+		if(event.getType() == EventType.NodeDataChanged) {
+			if (event.getPath().equals(taskPath)) {
+				if(taskService != null) {
+					taskService.initProperties(ZookeeperTaskUtil.getZookeeper(), this, nodeName, taskPath, schedulePath);
+				}
+				pool.execute(taskService);
 			}
-			pool.execute(taskService);
 		}
 	}
 

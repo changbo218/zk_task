@@ -85,17 +85,14 @@ public abstract class TaskService implements Runnable {
 		try {
 			taskData.setStatus(Constant.STATUS_TASKDATA_DOING);
 			stat = zk.setData(taskPath, ByteUtil.objectToByte(taskDatas), stat.getVersion());
-			// 哪个taskData被更新成功，就意味着这个任务处理者具备了该taskData的处理权，可以对其进行业务处理
+			// taskData被更新成功，可以对其进行业务处理
 			if (stat != null) {
-				// stat!=null 表示这个taskData更新成功，那么就可以继续对这个任务进行处理
-				// 这里要注意：
-				// 随着每一次获取新的版本，很有可能本次处理的taskData和上次的taskData不是同一个对象，所以taskData的业务处理代码一定要写在stat更新成功的代码里
 				handleTaskData(taskData);
 			}
 		} catch (KeeperException.BadVersionException e) {
 			// 如果发生版本错误的异常
 			System.out.println("出现版本异常" + e.getMessage());
-			getNewDataForUpdateForDoingStatus(taskData.getTaskId());
+			getNewDataForUpdateForDoingStatus();
 		}
 	}
 
@@ -154,11 +151,12 @@ public abstract class TaskService implements Runnable {
 			if(taskData.getVersion() <= 100) {
 				doAction(id, taskData.getVersion());
 			}
-			// 线程处理时，每处理完一个数据，就要把id加到完成队列(字符串)里--memcache
+			//每成功处理完一个数据，就要把id加到完成队列(字符串)里--memcache
 			progress.setSuccessIds(NumberConcatUtil.concatNumber(progress.getSuccessIds(), id));
 			memcacheComp.set(taskData.getId() + "_" + taskData.getTaskId() + "_success", progress.getSuccessIds());
 		} catch (TaskHandleException e) {
-			// 3. 处理过程中如果出错，则把错误的id加到errorIds中
+			// 注意：这里约束调用方如果业务执行出错，需抛出TaskHandleException
+			// 处理过程中如果出错，则把错误的id加到errorIds中
 			progress.setErrorIds(NumberConcatUtil.concatNumber(progress.getErrorIds(), id));
 			memcacheComp.set(taskData.getId() + "_" + taskData.getTaskId() + "_error", progress.getErrorIds());
 		}
@@ -167,7 +165,7 @@ public abstract class TaskService implements Runnable {
 	/**
 	 * 业务执行完成后，对taskData进行后续处理
 	 * 1. 处理newData列表的数据：newData中去掉这个task里的dataids（包含成功的和失败的，因为失败的又补充到后面了），加上执行错误的内容
-	 * 2. 处理taskData礼拜的数据：第一步成功之后，TaskData可以从列表中直接移除
+	 * 2. 处理taskData列表的数据：第一步成功之后，TaskData可以从列表中直接移除
 	 * @param progress
 	 * @param taskData
 	 */
@@ -236,14 +234,14 @@ public abstract class TaskService implements Runnable {
 					} else {
 						// 还有剩余的id，需要更新dataIds
 						newData.setDataIds(surplusDoingDataIds);
-						if (errorData != null) {
-							// 如果存在上次错误的id，则需要再添加会newDataList里
-							newDataList.add(errorData);
-						}
+					}
+					if (errorData != null) {
+						// 如果存在上次错误的id，则需要再添加回newDataList里
+						newDataList.add(errorData);
 					}
 				}
 			}
-			// 正常来说，一个task执行完，一定会更新newDataList，这里就不在判断了，就直接setData了
+			// 正常来说，一个task执行完，一定会更新newDataList，这里就不在判断是不是有变化，就直接setData了
 			stat = zk.setData(schedulePath, ByteUtil.objectToByte(newDataList), stat.getVersion());
 			if (stat != null) {
 				return true;
@@ -290,12 +288,10 @@ public abstract class TaskService implements Runnable {
 	/**
 	 * 重新获取taskPath下的最新值来更新taskData的状态
 	 * 
-	 * @param taskDataId
 	 * @throws KeeperException
 	 * @throws InterruptedException
 	 */
-	private void getNewDataForUpdateForDoingStatus(long taskDataId) throws Exception {
-		// 睡眠一秒后重新获取最新值
+	private void getNewDataForUpdateForDoingStatus() throws Exception {
 		Stat stat = zk.exists(taskPath, watcher);
 		List<TaskData> taskDatas = (List<TaskData>) ByteUtil.byteToObject(zk.getData(taskPath, watcher, null));
 		if (taskDatas != null && taskDatas.size() > 0) {
@@ -312,7 +308,7 @@ public abstract class TaskService implements Runnable {
 	 * @param id 任务数据id
 	 * @param version 该任务id被执行的次数，当id执行错误重新执行一次，这个version就会加1
 	 * 这里要注意，为了防止大量的重复错误调用，业务方需要根据version的值做特殊处理，默认执行100次之后就会认为成功
-	 * @throws TaskHandleException 如果执行时抛出此异常，就任务该id执行失败，需重新执行
+	 * @throws TaskHandleException 如果执行时抛出此异常，表示任务该id执行失败，需重新执行
 	 */
 	public abstract void doAction(long id, int version) throws TaskHandleException;
 }
