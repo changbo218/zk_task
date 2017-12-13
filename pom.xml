@@ -20,5 +20,6 @@
 		<module>zk_task.schedule</module>
     	<module>zk_task.demo</module>
     	<module>zk_task.write</module>
+    <module>zk_task.monitor</module>
   </modules>
 </project>
