@@ -1,0 +1,28 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>hello</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<!--/*@thymesVar id="name" type="java.lang.String"*/-->
+<table>
+        <tr>
+            <th>ID</th>
+            <th>节点name</th>
+            <th>任务id</th>
+            <th>数据id</th>
+            <th>版本</th>
+            <th>状态</th>
+        </tr>
+        <tr th:each="taskData : ${taskDataList}">
+            <td th:text="${taskData.id}"></td>
+            <td th:text="${taskData.nodeName}"></td>
+            <td th:text="${taskData.taskId}"></td>
+            <td th:text="${taskData.dataIds}"></td>
+            <td th:text="${taskData.version}"></td>
+            <td th:text="${taskData.status}"></td>
+        </tr>
+    </table>
+</body>
+</html>
